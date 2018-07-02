@@ -1,3 +1,4 @@
+import os.path
 import urllib
 import requests
 import time
@@ -15,11 +16,13 @@ INTEGRATED_KEYWORD_PRINT_FORMAT = """------------------------------------
 {} 키워드 - 통합검색
 ------------------------------------"""
 
-BLOG_RESULT_PRINT_FORMAT = """RANK : {}등
+BLOG_RESULT_PRINT_FORMAT = """
+RANK : {}등
 제목 : {}
 """
 
-SITE_RESULT_PRINT_FORMAT = """RANK : {}등
+SITE_RESULT_PRINT_FORMAT = """
+RANK : {}등
 제목 : {} - 사이트
 """
 
@@ -28,6 +31,7 @@ THERE_IS_NO_RESULT = "1페이지 내에 결과 값이 없습니다."
 
 
 def blog_search(blog_id, query):
+    ret = ""
     search_url = "https://m.search.naver.com/search.naver?where=m_blog&sm=mtb_jum&query={}".format(
         query)
     headers = {
@@ -39,17 +43,20 @@ def blog_search(blog_id, query):
     blogs = soup.find(class_='lst_total').find_all('a')
     titles = soup.find(class_='lst_total').find_all(class_='total_tit')
 
-    print(BLOG_KEYWORD_PRINT_FORMAT.format(query))
+    ret += BLOG_KEYWORD_PRINT_FORMAT.format(query)
     count = 0
     for index, blog in enumerate(blogs):
         if blog_id in blog['href']:
             count += 1
-            print(BLOG_RESULT_PRINT_FORMAT.format(index+1, titles[index].text))
+            ret += BLOG_RESULT_PRINT_FORMAT.format(index+1, titles[index].text)
     if count == 0:
-        print(THERE_IS_NO_RESULT)
+        ret += THERE_IS_NO_RESULT
+    return ret
 
 
 def integrated_search(site_url, blog_id, query):
+    ret = ""
+    
     search_url = "https://m.search.naver.com/search.naver?query={}&where=m&sm=mtp_hty".format(
         query)
     headers = {
@@ -61,18 +68,20 @@ def integrated_search(site_url, blog_id, query):
         'ul', class_='lst_total').find_all('a', class_='api_txt_lines total_tit')
 
     count = 0
-    print(INTEGRATED_KEYWORD_PRINT_FORMAT.format(query))
+    ret += INTEGRATED_KEYWORD_PRINT_FORMAT.format(query)
     for index, result in enumerate(results):
         if site_url in result['href']:
             title = result.text
-            print(SITE_RESULT_PRINT_FORMAT.format(index+1, title))
+            ret += SITE_RESULT_PRINT_FORMAT.format(index+1, title)
             count += 1
         if blog_id in result['href']:
             title = result.text
-            print(BLOG_RESULT_PRINT_FORMAT.format(index+1, title))
+            ret += BLOG_RESULT_PRINT_FORMAT.format(index+1, title)
             count += 1
     if count == 0:
-        print(THERE_IS_NO_RESULT)
+        ret += THERE_IS_NO_RESULT
+    
+    return ret
 
 
 query_list = [
@@ -82,7 +91,12 @@ query_list = [
     '기장누수'
 ]
 
-for query in query_list:
-    integrated_search(SITE_URL, BLOG_ID, query)
-    blog_search(BLOG_ID, query)
-    time.sleep(DELAY)
+dirname = os.path.dirname(__file__)
+filename = os.path.join(dirname, 'result.txt')
+
+with open(filename, 'w') as f:
+    for query in query_list:
+        f.write(integrated_search(SITE_URL, BLOG_ID, query))
+        f.write(blog_search(BLOG_ID, query))
+        f.write('\n\n')
+        time.sleep(DELAY)
